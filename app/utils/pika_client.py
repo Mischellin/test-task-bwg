@@ -1,55 +1,59 @@
 import json
-import logging as logger
 import uuid
 
 import pika
 from aio_pika import connect_robust
+from sqlalchemy.orm import Session
 
+from app.transaction_api.crud import CRUDWallet
+from app.transaction_api.schemas import AddCoin
 from config import settings
+from db.session import get_session
 
 
 class PikaClient:
-    def __init__(self, process_callable):
-        self.publish_queue_name = "foo_publish_queue"
+    def __init__(self, queue_name):
+        self.publish_queue_name = queue_name
         self.credentials = pika.PlainCredentials(
             settings.LOGIN_RABBITMQ, settings.PASS_RABBITMQ
         )
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(
-                host="127.0.0.1", port=5672, credentials=self.credentials
+                host="rabbitmq", port=5672, credentials=self.credentials
             )
         )
         self.channel = self.connection.channel()
-        self.publish_queue = self.channel.queue_declare(queue=self.publish_queue_name)
+        self.publish_queue = self.channel.queue_declare(
+            queue=self.publish_queue_name, durable=True
+        )
         self.callback_queue = self.publish_queue.method.queue
         self.response = None
-        self.process_callable = process_callable
-        logger.info("Pika connection initialized")
 
     async def consume(self, loop):
         """Setup message listener with the current running loop"""
         connection = await connect_robust(
-            host="127.0.0.1",
+            host="rabbitmq",
             port=5672,
             loop=loop,
             login=settings.LOGIN_RABBITMQ,
             password=settings.PASS_RABBITMQ,
         )
         channel = await connection.channel()
-        queue = await channel.declare_queue("foo_consume_queue")
+        queue = await channel.declare_queue(self.publish_queue_name, durable=True)
         await queue.consume(self.process_incoming_message, no_ack=False)
-        logger.info("Established pika async listener")
         return connection
 
     async def process_incoming_message(self, message):
         """Processing incoming message from RabbitMQ"""
-        message.ack()
-        body = message.body
-        logger.info("Received message")
-        if body:
-            self.process_callable(json.loads(body))
+        await message.ack()
+        body = json.loads(json.loads(message.body))
+        body = AddCoin.parse_obj(body)
+        if body.rem:
+            CRUDWallet().remove_coin(db=get_session(), msg=body)
+        else:
+            CRUDWallet().add_coin(db=get_session(), msg=body)
 
-    def send_message(self, message: dict):
+    def send_message(self, message):
         """Method to publish message to RabbitMQ"""
         self.channel.basic_publish(
             exchange="",
@@ -57,5 +61,5 @@ class PikaClient:
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue, correlation_id=str(uuid.uuid4())
             ),
-            body=json.dumps(message),
+            body=json.dumps(message.json()),
         )

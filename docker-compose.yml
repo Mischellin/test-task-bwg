@@ -14,19 +14,33 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
 
-  # app:
-  #   env_file:
-  #     - .env
-  #   container_name: mashabear-auth-ms-app
-  #   build: ./
-  #   command: bash -c "alembic upgrade head && python runserver.py"
-  #   volumes:
-  #     - .:/app
-  #   ports:
-  #     - 8087:${SERVER_PORT}
-  #   depends_on:
-  #     - db
-  #   restart: unless-stopped
+  rabbitmq:
+    image: rabbitmq:3.10.7-management
+    hostname: rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=${LOGIN_RABBITMQ}
+      - RABBITMQ_DEFAULT_PASS=${PASS_RABBITMQ}
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+    volumes:
+      - ./rabbitmq:/var/lib/rabbitmq
+    ports:
+      - 15672:15672
+      - 5672:5672
+
+  app:
+    env_file:
+      - .env
+    container_name: test-app
+    build: ./
+    command: bash -c "alembic upgrade head && python runserver.py"
+    volumes:
+      - .:/app
+    ports:
+      - 8087:8000
+    depends_on:
+      - db
+    restart: unless-stopped
 
 volumes:
   db-data:

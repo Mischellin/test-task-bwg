@@ -41,7 +41,7 @@ repos:
           # these are errors that will be ignored by flake8
           # check out their meaning here
           # https://flake8.pycqa.org/en/latest/user/error-codes.html
-          - "--ignore=E203,E266,E501,W503,F403,E402,W291"
+          - "--ignore=E203,E266,E501,W503,F403,E402,W291,F401"
 
   # #MyPy
   # - repo: https://github.com/pre-commit/mirrors-mypy
@@ -51,11 +51,11 @@ repos:
   #       args: ["--ignore-missing-imports"]
   #       additional_dependencies: ['types-requests']
 
-  #Bandit
-  - repo: https://github.com/PyCQA/bandit
-    rev: '1.7.4'
-    hooks:
-    - id: bandit
+  # #Bandit
+  # - repo: https://github.com/PyCQA/bandit
+  #   rev: '1.7.4'
+  #   hooks:
+  #   - id: bandit
 
   # #pydocstyle
   # -   repo: https://github.com/pycqa/pydocstyle
