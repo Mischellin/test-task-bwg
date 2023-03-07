@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  db:
+    container_name: db
+    image: postgres:15.1-alpine
+    restart: unless-stopped
+    ports:
+      - 5435:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+
+  # app:
+  #   env_file:
+  #     - .env
+  #   container_name: mashabear-auth-ms-app
+  #   build: ./
+  #   command: bash -c "alembic upgrade head && python runserver.py"
+  #   volumes:
+  #     - .:/app
+  #   ports:
+  #     - 8087:${SERVER_PORT}
+  #   depends_on:
+  #     - db
+  #   restart: unless-stopped
+
+volumes:
+  db-data:
